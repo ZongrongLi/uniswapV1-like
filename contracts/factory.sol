@@ -16,6 +16,11 @@ contract Factory {
         Exchange exchange = new Exchange(_tokenAddress);
         tokenToExchange[_tokenAddress] = address(exchange);
 
+
         return address(exchange);
+    }
+
+     function getExchange(address _tokenAddress) public view returns (address) {
+        return tokenToExchange[_tokenAddress];
     }
 }

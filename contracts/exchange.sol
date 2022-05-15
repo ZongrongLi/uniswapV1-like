@@ -5,6 +5,20 @@ pragma solidity ^0.8.4;
 
 import "./erc20.sol";
 
+
+interface IExchange {
+    function ethToTokenSwap(uint256 _minTokens) external payable;
+
+    function ethToTokenTransfer(uint256 _minTokens, address _recipient)
+        external
+        payable;
+}
+
+interface IFactory {
+    function getExchange(address _tokenAddress) external returns (address);
+}
+
+
 contract Exchange is ERC20{
 	address public  tokenAddress;
     address public factoryAddress;
@@ -18,7 +32,7 @@ contract Exchange is ERC20{
 
 	receive() external payable{}
 	function getReserve() public view returns (uint256) {
-	return IERC20(tokenAddress).balanceOf(address(this));
+	    return IERC20(tokenAddress).balanceOf(address(this));
 	}
 
 	function getBalance() public view returns (uint256){
@@ -108,20 +122,46 @@ contract Exchange is ERC20{
         return getAmount(_soldToken, reserve, balance);
     }
 
-    function swapEth2Token(uint256 _minToken) public payable{ // uint256 _minToken 这个变量特别重要，它是用来指定交易的最小数量,可以保护用户免受试图拦截他们的交易并修改池余额以谋取利润的抢先机器人的侵害。 防止甚么都换不到，我们可以指定一个最小的交易量，以防止恶意交易者拿到你的资产。
-        uint256 amount = getTokenAmount(msg.value);
+
+    function ethToTokenTransfer(uint256 _minToken, address _recipient) private{
+         uint256 amount = getTokenAmount(msg.value);
         require(amount >= _minToken, "insufficient output amount");
-        require(amount > 0, "invalid swapEth2Token");
+        require(amount > 0, "invalid ethToToken");
         ERC20 token = ERC20(tokenAddress);
-        token.transfer(msg.sender, amount);
+        token.transfer(_recipient, amount);
     }
 
-    function swapToken2Eth(uint256 _soldToken,  uint256 _minEth) public payable{
-        uint256 amount = getEthAmount(_soldToken);
-        require(amount >= _minEth, "insufficient output amount");
-        require(amount > 0, "invalid swapToken2Eth");
-        ERC20 token = ERC20(tokenAddress);
-        token.transferFrom(msg.sender, address(this), _soldToken);
-        payable(msg.sender).transfer(amount);
+    function swapEth2Token(uint256 _minToken) public payable{ // uint256 _minToken 这个变量特别重要，它是用来指定交易的最小数量,可以保护用户免受试图拦截他们的交易并修改池余额以谋取利润的抢先机器人的侵害。 防止甚么都换不到，我们可以指定一个最小的交易量，以防止恶意交易者拿到你的资产。
+       return ethToTokenTransfer(_minToken, msg.sender);
     }
+
+
+
+
+
+
+
+    function tokenToTokenSwap(
+        uint256 _tokensSold,
+        uint256 _minTokensBought,
+        address _tokenAddress
+    )public {
+        address exchangeAddress = IFactory(factoryAddress).getExchange(_tokenAddress);
+
+        require(exchangeAddress != address(this) && exchangeAddress != address(0),"invalid exchange address");
+        uint256 ethBought = getAmount(
+            _tokensSold,
+            getReserve(),
+            address(this).balance
+        );
+        // 卖出的token转到本合约
+        IERC20(tokenAddress).transferFrom(
+            msg.sender,
+            address(this),
+            _tokensSold
+        );
+
+        IExchange(exchangeAddress).ethToTokenTransfer{value: ethBought}(_minTokensBought,msg.sender);
+    }
+    
 }
