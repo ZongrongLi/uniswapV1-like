@@ -5,9 +5,9 @@ pragma solidity ^0.8.4;
 
 import "./erc20.sol";
 
-contract Exchange {
+contract Exchange is ERC20{
 	address public  tokenAddress;
-	constructor(address _tokenAddress){
+	constructor(address _tokenAddress)  ERC20("GameItem", "ITM"){
 		require(_tokenAddress != address(0),"invalid address");
 		tokenAddress = _tokenAddress;
 	}
@@ -16,18 +16,64 @@ contract Exchange {
 	function getReserve() public view returns (uint256) {
 	return IERC20(tokenAddress).balanceOf(address(this));
 	}
+
 	function getBalance() public view returns (uint256){
 		return address(this).balance;
 	}
-	
-	function addLiquidity(uint256 _tokenAmount) public payable {
+	event From(address from);
+
+    
+	function addLiquidity(uint256 _tokenAmount) public payable  returns(uint256) {
+        emit From(msg.sender); // for debugging
+        uint256  tokenReserve = getReserve();
+        if (tokenReserve ==0){
         	ERC20 token = ERC20(tokenAddress);
         	token.transferFrom(msg.sender, address(this), _tokenAmount);
+            uint256 liquidity = address(this).balance; // 一开始是有多少eth就发多少token
+            _mint(msg.sender, liquidity);
+            return liquidity;
+        }else{
+            uint256  ethReserve = getBalance();
+            uint256 price  =  getPrice(tokenReserve,ethReserve);
+            uint256 exchangeTokenAmount = (price * msg.value)/1000;
+            require(exchangeTokenAmount <= tokenReserve,"invalid amount"); // 根据比例能换的钱要大于存量
+            require(_tokenAmount >= exchangeTokenAmount,"invalid amount"); // 放进来的钱要大于能换的钱
+            ERC20 token = ERC20(tokenAddress);
+
+            // ether 从sender 发到合约
+            // token 从sender 转到合约
+            token.transferFrom(msg.sender, address(this), exchangeTokenAmount); 
+
+
+            // 奖励lptoken
+            // trade of:
+            // 按照这次质押的占所有质押的eth的比值 来决定总这里发布token的比例
+            uint256 liquidity = totalSupply() * (msg.value / ethReserve);
+            _mint(msg.sender, liquidity);
+            return liquidity;
+        }
     }
+
+
+
+    function removeLiquidity(uint256 _amount) public returns (uint256, uint256) {
+        require(_amount > 0, "invalid amount");
+
+        uint256 ethAmount = (address(this).balance * _amount) / totalSupply();
+        uint256 tokenAmount = (getReserve() * _amount) / totalSupply();
+
+        _burn(msg.sender, _amount);
+        payable(msg.sender).transfer(ethAmount);
+        IERC20(tokenAddress).transfer(msg.sender, tokenAmount);
+
+        return (ethAmount, tokenAmount);
+    }
+
+
     function getPrice(uint256 inputReserve, uint256 outputReserve) public pure returns (uint256) {
 	    require(inputReserve>0 && outputReserve > 0, "invalid reserves");
 
-	return inputReserve *1000 / outputReserve;
+	    return inputReserve *1000 / outputReserve;
     }
 
 
@@ -40,8 +86,7 @@ contract Exchange {
     function getAmount(uint256 delata0 , uint256 amount0, uint256 amount1) public pure  returns(uint256){
         require(amount0 > 0 && amount1 > 0, "invalid getAmount");
 
-        return (amount1 * delata0) / (amount0 + delata0);
-    
+        return (amount1 * delata0 *99) / (amount0 + delata0)*100;
     }
     
     function getTokenAmount(uint256 _soldEth) public  view returns(uint256){
