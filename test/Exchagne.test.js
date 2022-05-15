@@ -6,20 +6,28 @@ toWei =  (value) => utils.parseEther(value.toString())
 const fromWei = (value) => utils.formatEther(typeof value === 'string' ? value : value.toString());
 
 describe("Token", () =>{
-let token;
-let exchange;
+	let token;
+	let exchange;
+	let owner;
+	let user;
+
+	beforeEach(async () => {
+		[owner, user] = await ethers.getSigners();
+		Token = await ethers.getContractFactory('Token')
+		token = await Token.deploy('Token',"Tk",toWei(1000000))
+		await token.deployed()
 
 
-beforeEach(async () => {
-	Token = await ethers.getContractFactory('Token')
-	token = await Token.deploy('Token',"Tk",toWei(1000000))
-	await token.deployed()
-
-
-	Exchange = await ethers.getContractFactory('Exchange')
-	exchange = await Exchange.deploy(token.address)
-	await exchange.deployed()
-});
+		Exchange = await ethers.getContractFactory('Exchange')
+		exchange = await Exchange.deploy(token.address)
+		await exchange.deployed()
+	});
+	
+	describe("exchange", async () => {
+		it("adds liquidity", async () => {
+			expect(await exchange.factoryAddress()).to.equal(owner.address);
+		});
+	});
 
 	describe("addLiquidity", async () => {
 		it("adds liquidity", async () => {
@@ -87,7 +95,6 @@ beforeEach(async () => {
 	
 	describe("impermanent loss", async () => {
 		it("valid impermanent loss", async () => {
-			[owner, user] = await ethers.getSigners();
 			exchange.addLiquidity(toWei(200), { value: toWei(100) });
 			exchange.connect(user).swapEth2Token(toWei(18), { value: toWei(10) });
 			exchange.removeLiquidity(toWei(100));	

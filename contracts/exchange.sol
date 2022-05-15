@@ -7,9 +7,13 @@ import "./erc20.sol";
 
 contract Exchange is ERC20{
 	address public  tokenAddress;
+    address public factoryAddress;
+
+
 	constructor(address _tokenAddress)  ERC20("GameItem", "ITM"){
 		require(_tokenAddress != address(0),"invalid address");
 		tokenAddress = _tokenAddress;
+        factoryAddress = msg.sender;
 	}
 
 	receive() external payable{}
