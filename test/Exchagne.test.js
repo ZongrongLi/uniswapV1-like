@@ -80,8 +80,8 @@ beforeEach(async () => {
 			tokenAmount = await exchange.getTokenAmount(toWei(1))
 			eth = await exchange.getEthAmount(toWei(1))
 			console.log(fromWei(eth).toString())
-			expect(fromWei(tokenAmount).toString()).to.equal("1.980198019801980198");
-			expect(fromWei(eth).toString()).to.equal("0.497512437810945273");
+			expect(fromWei(tokenAmount).toString()).to.equal("1.960396039603960396");
+			expect(fromWei(eth).toString()).to.equal("0.49253731343283582");
 		});
 	});
 	

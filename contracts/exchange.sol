@@ -86,7 +86,7 @@ contract Exchange is ERC20{
     function getAmount(uint256 delata0 , uint256 amount0, uint256 amount1) public pure  returns(uint256){
         require(amount0 > 0 && amount1 > 0, "invalid getAmount");
 
-        return (amount1 * delata0 *99) / (amount0 + delata0)*100;
+        return (amount1 * delata0 *99) / ((amount0 + delata0)*100);
     }
     
     function getTokenAmount(uint256 _soldEth) public  view returns(uint256){
